@@ -19,11 +19,10 @@
 //   }
 //
 // Each bucket renders as a section in the Habits tab. Each item is an
-// independent toggle with its own row in localStorage / D1.
+// independent toggle stored in localStorage.
 //
-// `id` is the primary key — it's what gets written to D1 as item_id, so
-// don't change it for an existing tracker (you'd lose history). `name`
-// can change freely.
+// `id` is the storage key — don't change it for an existing tracker
+// (you'd lose history). `name` can change freely.
 //
 // Optional click-to-expand notes per item live in HABIT_INFO.
 //

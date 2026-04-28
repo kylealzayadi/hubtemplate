@@ -16,9 +16,8 @@ function formatHeading(dateStr) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-// Browse historical daily logs. Reads straight from localStorage (which
-// the sync client keeps hydrated from D1). To show a new tracker here,
-// add a block alongside HABITS / WORKOUTS below.
+// Browse historical daily logs. Reads straight from localStorage. To
+// show a new tracker here, add a block alongside HABITS / WORKOUTS below.
 export default function LogsModal({ onClose }) {
   const [selectedDate, setSelectedDate] = useState(() => toDateStr(new Date()));
 

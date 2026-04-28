@@ -1,11 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
-import { queueEvent } from '../../lib/syncClient.js';
+import { useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'hub_money';
 
-// The whole money state (balance + transactions + savings) is stored as
-// one JSON blob in D1, keyed by log_type='money', item_id='state'. Simple
-// and atomic — no need to denormalize.
 function loadData() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -20,17 +16,8 @@ function loadData() {
   return { balance: 0, transactions: [], savings: [] };
 }
 
-function syncMoneyState(state) {
-  const now = Date.now();
-  queueEvent({
-    log_type: 'money',
-    date: '_',
-    item_id: 'state',
-    value: now,
-    ts: now,
-    submitted_at: new Date().toISOString(),
-    meta: JSON.stringify(state),
-  });
+function save(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 function fmtMoney(n) {
@@ -43,12 +30,6 @@ export default function MoneyTab() {
   const [reason, setReason] = useState('');
   const [mode, setMode] = useState('subtract');
   const [savingsOpen, setSavingsOpen] = useState(false);
-
-  useEffect(() => {
-    const reload = () => setData(loadData());
-    window.addEventListener('hub-sync-pull', reload);
-    return () => window.removeEventListener('hub-sync-pull', reload);
-  }, []);
 
   const submit = useCallback((e) => {
     e.preventDefault();
@@ -69,8 +50,7 @@ export default function MoneyTab() {
           ...prev.transactions,
         ],
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      syncMoneyState(next);
+      save(next);
       return next;
     });
     setAmount('');
@@ -86,8 +66,7 @@ export default function MoneyTab() {
         balance: Math.round((prev.balance - tx.amount) * 100) / 100,
         transactions: prev.transactions.filter(t => t.id !== id),
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      syncMoneyState(next);
+      save(next);
       return next;
     });
   }, []);
@@ -104,8 +83,7 @@ export default function MoneyTab() {
           { id: Date.now(), name: trimmed, amount: Math.round(num * 100) / 100 },
         ],
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      syncMoneyState(next);
+      save(next);
       return next;
     });
   }, []);
@@ -116,8 +94,7 @@ export default function MoneyTab() {
         ...prev,
         savings: prev.savings.map(s => s.id === id ? { ...s, ...patch } : s),
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      syncMoneyState(next);
+      save(next);
       return next;
     });
   }, []);
@@ -125,8 +102,7 @@ export default function MoneyTab() {
   const deleteSavings = useCallback((id) => {
     setData(prev => {
       const next = { ...prev, savings: prev.savings.filter(s => s.id !== id) };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      syncMoneyState(next);
+      save(next);
       return next;
     });
   }, []);

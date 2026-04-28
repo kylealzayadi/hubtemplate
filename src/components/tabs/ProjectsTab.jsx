@@ -1,117 +1,16 @@
 import { useEffect, useState } from 'react';
 import { LANG_COLORS } from '../../hooks/useGithub.js';
 
-function ContribGraph({ heatmap, loading, year, years, onYearChange }) {
-  const days = heatmap || [];
-
-  const weeks = [];
-  let week = [];
-  for (const day of days) {
-    if (day.dow === 0 && week.length) {
-      weeks.push(week);
-      week = [];
-    }
-    week.push(day);
-  }
-  if (week.length) weeks.push(week);
-
-  const months = [];
-  let lastMonth = '';
-  for (let wi = 0; wi < weeks.length; wi++) {
-    const firstDay = weeks[wi][0];
-    const m = new Date(firstDay.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' });
-    if (m !== lastMonth) {
-      months.push({ label: m, col: wi });
-      lastMonth = m;
-    }
-  }
-
-  const activeDays = days.filter(d => d.level > 0).length;
-  const gridCols = `14px repeat(${Math.max(weeks.length, 1)}, minmax(0, 1fr))`;
-
-  return (
-    <div className="contrib-graph">
-      <div className="contrib-header">
-        <span className="contrib-total">{activeDays} active days</span>
-        <select
-          className="contrib-year-select"
-          value={year}
-          onChange={e => onYearChange(Number(e.target.value))}
-        >
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </div>
-      {loading && !days.length ? (
-        <span className="loading">loading contributions...</span>
-      ) : !days.length ? (
-        <span className="loading">No contribution data for {year}</span>
-      ) : (
-        <>
-          <div className="contrib-months" style={{ gridTemplateColumns: gridCols }}>
-            {months.map((m, i) => (
-              <span key={i} className="contrib-month" style={{ gridColumnStart: m.col + 2 }}>{m.label}</span>
-            ))}
-          </div>
-          <div className="contrib-grid" style={{ gridTemplateColumns: gridCols }}>
-            {[0,1,2,3,4,5,6].map(dow => (
-              <span key={dow} className="contrib-dow">
-                {dow === 1 ? 'Mon' : dow === 3 ? 'Wed' : dow === 5 ? 'Fri' : ''}
-              </span>
-            ))}
-            {weeks.map((week, wi) =>
-              [0,1,2,3,4,5,6].map(dow => {
-                const day = week.find(d => d.dow === dow);
-                if (!day) return <span key={`${wi}-${dow}`} className="contrib-cell empty" />;
-                return (
-                  <span
-                    key={day.date}
-                    className={`contrib-cell lv${day.isFuture ? '-future' : day.level}`}
-                    title={`${day.date}`}
-                  />
-                );
-              })
-            )}
-          </div>
-          <div className="contrib-legend">
-            <span>Less</span>
-            <span className="contrib-cell lv0" />
-            <span className="contrib-cell lv1" />
-            <span className="contrib-cell lv2" />
-            <span className="contrib-cell lv3" />
-            <span className="contrib-cell lv4" />
-            <span>More</span>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-export default function ProjectsTab({ fullRepos, loading, error, onLoad, commits, heatmap, heatmapYear, commitsLoading, heatmapLoading, onLoadCommits, onLoadHeatmap }) {
+export default function ProjectsTab({ fullRepos, loading, error, onLoad, commits, commitsLoading, onLoadCommits }) {
   const [tab, setTab] = useState('repos');
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5];
-  const selectedYear = heatmapYear ?? currentYear;
 
   useEffect(() => {
     onLoad();
-    onLoadHeatmap(currentYear);
     onLoadCommits();
   }, []);
 
   return (
     <div className="projects-tab-wrap">
-      <div className="panel">
-        <div className="panel-title">Contributions</div>
-        <ContribGraph
-          heatmap={heatmap}
-          loading={heatmapLoading}
-          year={selectedYear}
-          years={years}
-          onYearChange={onLoadHeatmap}
-        />
-      </div>
-
       <div className="panel">
         <div className="panel-title-row">
           <div className="panel-title">GitHub</div>

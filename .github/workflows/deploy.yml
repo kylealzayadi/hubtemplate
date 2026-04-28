@@ -1,8 +1,4 @@
-name: Deploy to Cloudflare Pages
-
-# Requires two repository secrets:
-#   CLOUDFLARE_API_TOKEN  — token with "Cloudflare Pages: Edit" permission
-#   CLOUDFLARE_ACCOUNT_ID — your account id (Cloudflare dashboard → right sidebar)
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -11,11 +7,19 @@ on:
 
 permissions:
   contents: read
-  deployments: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,9 +34,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=the-hub
+          path: dist
+
+      - uses: actions/deploy-pages@v4
+        id: deployment

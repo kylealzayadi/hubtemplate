@@ -1,22 +1,18 @@
-import { useState, useCallback, useEffect } from 'react';
-import { queueEvent } from '../lib/syncClient.js';
+import { useState, useCallback } from 'react';
 
 // Generic yes/no daily tracker. Used by HabitsTab as the "did you work
 // out today?" widget — but it's reusable for anything binary that you
 // want a monthly heatmap of (meditate, journal, no alcohol, etc.).
 //
-// To repurpose, instantiate with a unique storageKey + logType + question
-// label. Pattern:
+// Pass a unique storageKey + question label:
 //
 //   <HabitLogger
 //     storageKey="hub_meditation_log"
-//     logType="meditation"
 //     question="Did you meditate today?"
 //     yesLabel="Yes" noLabel="No"
 //     yesText="Meditation: done" noText="Meditation: skipped" />
 
 const DEFAULT_STORAGE_KEY = 'hub_workouts_log';
-const DEFAULT_LOG_TYPE = 'workouts';
 
 function loadLog(key) {
   try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; }
@@ -42,20 +38,9 @@ function getMonthDays(year, month) {
   return days;
 }
 
-function MonthSummary({ log, setLog, storageKey, logType, onClose, yesLabel, noLabel }) {
+function MonthSummary({ log, setLog, storageKey, onClose, yesLabel, noLabel }) {
   const now = new Date();
   const [monthOffset, setMonthOffset] = useState(0);
-
-  const sync = (dateKey, value) => {
-    queueEvent({
-      log_type: logType,
-      date: dateKey,
-      item_id: '_',
-      value: value === true ? 1 : 0,
-      ts: Date.now(),
-      submitted_at: new Date().toISOString()
-    });
-  };
 
   const toggleDay = (dateKey) => {
     const cellDate = new Date(dateKey + 'T12:00:00');
@@ -65,12 +50,10 @@ function MonthSummary({ log, setLog, storageKey, logType, onClose, yesLabel, noL
     setLog(prev => {
       const cur = prev[dateKey];
       const next = { ...prev };
-      let newStatus;
-      if (cur === undefined)      { next[dateKey] = true;  newStatus = true; }
-      else if (cur === true)      { next[dateKey] = false; newStatus = false; }
-      else                        { delete next[dateKey];  newStatus = undefined; }
+      if (cur === undefined)      { next[dateKey] = true; }
+      else if (cur === true)      { next[dateKey] = false; }
+      else                        { delete next[dateKey]; }
       saveLog(storageKey, next);
-      sync(dateKey, newStatus);
       return next;
     });
   };
@@ -164,7 +147,6 @@ function MonthSummary({ log, setLog, storageKey, logType, onClose, yesLabel, noL
 
 export default function HabitLogger({
   storageKey = DEFAULT_STORAGE_KEY,
-  logType = DEFAULT_LOG_TYPE,
   question = 'Did you do it today?',
   yesLabel = 'Yes',
   noLabel = 'No',
@@ -174,24 +156,6 @@ export default function HabitLogger({
   const [log, setLog] = useState(() => loadLog(storageKey));
   const [showSummary, setShowSummary] = useState(false);
   const todayKey = today();
-
-  useEffect(() => {
-    const reload = () => setLog(loadLog(storageKey));
-    window.addEventListener('hub-sync-pull', reload);
-    return () => window.removeEventListener('hub-sync-pull', reload);
-  }, [storageKey]);
-
-  const sync = (value) => {
-    queueEvent({
-      log_type: logType,
-      date: todayKey,
-      item_id: '_',
-      value: value === true ? 1 : 0,
-      ts: Date.now(),
-      submitted_at: new Date().toISOString()
-    });
-  };
-
   const todayStatus = log[todayKey];
 
   const markToday = useCallback((status) => {
@@ -200,7 +164,6 @@ export default function HabitLogger({
       saveLog(storageKey, next);
       return next;
     });
-    sync(status);
   }, [todayKey, storageKey]);
 
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -228,7 +191,6 @@ export default function HabitLogger({
               saveLog(storageKey, next);
               return next;
             });
-            sync(undefined);
           }}>Change</button>
         </div>
       )}
@@ -238,7 +200,6 @@ export default function HabitLogger({
           log={log}
           setLog={setLog}
           storageKey={storageKey}
-          logType={logType}
           onClose={() => setShowSummary(false)}
           yesLabel={yesLabel}
           noLabel={noLabel}

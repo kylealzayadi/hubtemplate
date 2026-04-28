@@ -125,7 +125,6 @@ export default function HabitsTab() {
               binary daily tracker — pass a unique storageKey + logType. */}
           <HabitLogger
             storageKey="hub_workouts_log"
-            logType="workouts"
             question="Did you work out today?"
             yesLabel="Yes" noLabel="No"
             yesText="Workout: done" noText="Workout: skipped"

@@ -204,12 +204,8 @@ export default function App() {
             error={github.error}
             onLoad={github.loadFull}
             commits={github.commits}
-            heatmap={github.heatmap}
-            heatmapYear={github.heatmapYear}
             commitsLoading={github.commitsLoading}
-            heatmapLoading={github.heatmapLoading}
             onLoadCommits={github.loadCommits}
-            onLoadHeatmap={github.loadHeatmap}
           />
         </div>
 
