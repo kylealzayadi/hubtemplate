@@ -1,0 +1,125 @@
+import { useState, useCallback } from 'react';
+
+// Configure via .env.local: VITE_GITHUB_USERNAME=your-login
+// Leave blank to disable the GitHub widgets gracefully.
+const USERNAME = import.meta.env.VITE_GITHUB_USERNAME || '';
+
+export const LANG_COLORS = {
+  JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
+  'C#': '#178600', Swift: '#F05138', HTML: '#e34c26',
+  CSS: '#563d7c', 'C++': '#f34b7d', Go: '#00ADD8', Rust: '#dea584',
+  Ruby: '#701516', Java: '#b07219', Kotlin: '#A97BFF'
+};
+
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Hide noisy entries: forks, the user's profile-readme repo, and the
+// GitHub Pages site repo. Edit to taste.
+function filterRepos(repos) {
+  return repos.filter(r =>
+    !r.fork &&
+    r.name !== USERNAME &&
+    r.name !== `${USERNAME}.github.io`
+  );
+}
+
+export function useGithub() {
+  const [sidebarRepos, setSidebarRepos]   = useState(null);
+  const [fullRepos, setFullRepos]         = useState(null);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState(null);
+  const [syncTime, setSyncTime]           = useState(null);
+  const [fullLoaded, setFullLoaded]       = useState(false);
+
+  const loadRepos = useCallback(async () => {
+    if (!USERNAME) { setSidebarRepos([]); setFullRepos([]); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`https://api.github.com/users/${USERNAME}/repos?sort=updated&per_page=20`);
+      if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+      const repos = await res.json();
+      const filtered = filterRepos(repos);
+      setSidebarRepos(filtered.slice(0, 3).map((r, i) => ({
+        name: r.name, url: r.html_url,
+        lang: r.language || '', date: formatDate(r.updated_at), index: i
+      })));
+      setFullRepos(filtered.map((r, i) => ({
+        name: r.name, url: r.html_url,
+        lang: r.language || '', date: formatDate(r.updated_at), index: i
+      })));
+      setSyncTime(new Date().toLocaleTimeString());
+      setFullLoaded(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadFull = useCallback(async () => {
+    if (fullLoaded) return;
+    await loadRepos();
+  }, [fullLoaded, loadRepos]);
+
+  const [commits, setCommits] = useState(null);
+  const [heatmap, setHeatmap] = useState(null);
+  const [heatmapYear, setHeatmapYear] = useState(() => new Date().getFullYear());
+  const [commitsLoading, setCommitsLoading] = useState(false);
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
+
+  const loadCommits = useCallback(async () => {
+    if (commits || !USERNAME) { if (!USERNAME) setCommits([]); return; }
+    setCommitsLoading(true);
+    try {
+      const res = await fetch(`https://api.github.com/users/${USERNAME}/events?per_page=100`);
+      if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+      const events = await res.json();
+      const pushEvents = events.filter(e => e.type === 'PushEvent');
+      const flat = pushEvents.flatMap(e =>
+        e.payload.commits.map(c => ({
+          repo: e.repo.name.replace(`${USERNAME}/`, ''),
+          message: c.message.split('\n')[0],
+          sha: c.sha.slice(0, 7),
+          date: formatDate(e.created_at),
+          time: new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+          url: `https://github.com/${e.repo.name}/commit/${c.sha}`,
+          ts: new Date(e.created_at).getTime()
+        }))
+      );
+      flat.sort((a, b) => b.ts - a.ts);
+      setCommits(flat);
+    } catch { setCommits([]); }
+    finally { setCommitsLoading(false); }
+  }, [commits]);
+
+  const loadHeatmap = useCallback(async (year) => {
+    if (!USERNAME) { setHeatmap([]); return; }
+    const targetYear = year ?? new Date().getFullYear();
+    setHeatmapLoading(true);
+    setHeatmapYear(targetYear);
+    setHeatmap(null);
+    try {
+      const from = `${targetYear}-01-01`;
+      const to = `${targetYear}-12-31`;
+      const res = await fetch(`/api/github-contributions?user=${USERNAME}&from=${from}&to=${to}`);
+      if (!res.ok) throw new Error('contributions fetch failed');
+      const { days } = await res.json();
+      const today = new Date().toISOString().slice(0, 10);
+      const sorted = days
+        .filter(d => d.date.startsWith(`${targetYear}-`))
+        .map(d => ({
+          ...d,
+          dow: new Date(d.date + 'T12:00:00').getDay(),
+          isFuture: d.date > today
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      setHeatmap(sorted);
+    } catch { setHeatmap([]); }
+    finally { setHeatmapLoading(false); }
+  }, []);
+
+  return { sidebarRepos, fullRepos, loading, error, syncTime, loadRepos, loadFull, commits, heatmap, heatmapYear, commitsLoading, heatmapLoading, loadCommits, loadHeatmap, hasUsername: !!USERNAME };
+}
