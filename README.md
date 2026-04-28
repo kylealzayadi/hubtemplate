@@ -6,8 +6,8 @@ activity. It's a static site — no backend, no database, no API keys.
 All data lives in your browser's localStorage.
 
 Fork it, swap the example widgets for whatever you actually want to
-track, and deploy it to GitHub Pages (or anywhere else that hosts
-static files).
+track, and host it wherever — Netlify, Vercel, GitHub Pages, S3,
+or just open `dist/index.html` after a build.
 
 ## What's in the box
 
@@ -49,16 +49,10 @@ Open the URL Vite prints. Default lock password is whatever you put in
 
 ## Deploy
 
-The included `.github/workflows/deploy.yml` ships the built `dist/` to
-GitHub Pages on every push to `main`.
-
-1. Push your fork to GitHub.
-2. In the repo: **Settings → Pages → Build and deployment → Source:
-   GitHub Actions**.
-3. Push to `main`. The workflow builds and deploys.
-
-Want to host elsewhere? `npm run build` produces a static `dist/` you
-can drop on Netlify, Vercel, S3, or any static host.
+`npm run build` produces a static `dist/` directory. Drop it on any
+host that serves static files — Netlify, Vercel, Cloudflare Pages,
+GitHub Pages, an S3 bucket, your own VPS, doesn't matter. There's no
+backend to provision.
 
 ## Where data lives
 
